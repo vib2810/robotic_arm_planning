@@ -52,7 +52,7 @@ void draw(vector<double> theta, int n_states, Mat costmap) //input in degrees, n
     drawstate(theta, n_states, temp, Scalar(0,0,255));
     namedWindow("Map", WINDOW_NORMAL);
     imshow("Map",temp);
-    waitKey(500);
+    waitKey(1000);
     return;
 }
 void draw(vector<double> theta, int n_states, Mat costmap, vector<double> start, vector<double> end) //input in degrees, n_states=3
@@ -260,12 +260,11 @@ public:
                 arr[i][j].x[1]=min_lim[1]+j*reso[1];
                 // double state[]={arr[i][j].x[0], arr[i][j].x[1]};
                 arr[i][j].obs=obs_check(arr[i][j].x, n_states, costmap);
-                circle(config_space, Point(i,j), 1, Scalar(arr[i][j].obs*255,arr[i][j].obs*255,arr[i][j].obs*255), -1);
+                circle(config_space, Point(i,j), 1, Scalar(arr[i][j].obs*105,arr[i][j].obs*5,arr[i][j].obs*5), -1);
                 arr[i][j].open=false;
             }
         }  
 
-        // waitKey(0);
         //define start and end nodes
         info start(n_states),end(n_states);
 
@@ -314,18 +313,18 @@ public:
             if(arr[get_index_from_value(q.x[0],0)][get_index_from_value(q.x[1],1)].closed == true ) continue;
             // circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1, Scalar(255,100,100), -1);
             
-            if(count1>1000 || count > 140500)
+            if(count1>1000)
             {
                 cout<<"Iteration count: " <<count << " States: "<<q.x[0]<<" "<<q.x[1]<<" Cost: "<<q.g<<"+"<<q.h<<" ="<<q.f<<endl;
                 // draw(q.x, 2, costmap, theta_start, theta_end);
-                circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1,Scalar(0,0,255), -1);
-                imshow("Configuration Space", config_space);
-                waitKey(1);
+                // circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1,Scalar(0,0,255), -1);
+                // imshow("Configuration Space", config_space);
+                // waitKey(1);
                 
-                circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1,Scalar(255,0,255), -1);
-                imshow("Configuration Space", config_space);
+                // circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1,Scalar(255,0,255), -1);
+                // imshow("Configuration Space", config_space);
 
-                waitKey(1);
+                // waitKey(1);
                 count1=0;
             }
 
@@ -418,6 +417,7 @@ int main(int argc,char ** argv)
     Mat costmap(img_res, img_res, CV_8UC1,Scalar(255));   
     circle(costmap, Point(img_res*(50+10)/100,img_res*(50+10)/100), img_res/70, Scalar(0), -1);
     circle(costmap, Point(img_res*(50-25)/100,img_res*(50-15)/100), img_res/70, Scalar(0), -1);
+    circle(costmap, Point(img_res*(50+32)/100,img_res*(50-14)/100), img_res/70, Scalar(0), -1);
 
     // circle(costmap, Point(500+220,500-30), 10, Scalar(0), -1);
 
