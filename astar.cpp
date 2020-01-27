@@ -7,10 +7,10 @@ using namespace cv;
 using namespace std;
 
 int img_res=1000;
-double l[3]={ (double)250*img_res/(double)1000, (double)180*img_res/(double)1000.0, 150} ;//l0, l1, l2
+double l[3]={ (double)250*img_res/(double)1000, (double)150*img_res/(double)1000.0, 150} ;//l0, l1, l2
 double max_lim[3]={360, 360, 180};
 double min_lim[3]={0, 0, 0};
-double reso[3]={5,5,1}; //resolution for each state
+double reso[3]={9,9,1}; //resolution for each state
 // double reso[3]={5,5,1}; //resolution for each state
 
 void drawstate(vector<double>theta, int n_states, Mat &image, Scalar color)
@@ -26,7 +26,7 @@ void drawstate(vector<double>theta, int n_states, Mat &image, Scalar color)
     line(image, Point(x_off,y_off), Point(x_off+x[0],y_off+y[0]), color, img_res/100);
     
     for(int i=1; i<n_states; i++)  line(image, Point(x_off+x[i],y_off+y[i]), Point(x_off+x[i-1],y_off+y[i-1]), color, img_res/100);
-    for(int i=0; i<n_states; i++)  circle(image, Point(x_off+x[i],y_off+y[i]), img_res/90, Scalar(255,0,0), -1);
+    for(int i=0; i<n_states; i++)  circle(image, Point(x_off+x[i],y_off+y[i]), img_res/120, Scalar(255,0,0), -1);
     
 }
 void draw(vector<double> theta, int n_states, Mat costmap) //input in degrees, n_states=3
@@ -34,32 +34,23 @@ void draw(vector<double> theta, int n_states, Mat costmap) //input in degrees, n
     int x_off=costmap.rows/2, y_off=costmap.cols/2;
     Mat temp( costmap.rows, costmap.cols ,CV_8UC3,Scalar(255,255,255));   
 
-    for(int i=0; i<temp.rows; i++)
-    {
-        for(int j=0; j<temp.cols; j++)
-        {
-            if(costmap.at<uchar>(i,j)==0)
-            {
-                temp.at<Vec3b>(i,j)[0]=0;
-                temp.at<Vec3b>(i,j)[1]=0;
-                temp.at<Vec3b>(i,j)[2]=0;
-            }
-        }
-    }
+    circle(temp, Point(img_res*(50+10)/100,img_res*(50+10)/100), img_res/60, Scalar(0), -1);
+    circle(temp, Point(img_res*(50-25)/100,img_res*(50-15)/100), img_res/60, Scalar(0), -1);
+    circle(temp, Point(img_res*(50+32)/100,img_res*(50-14)/100), img_res/60, Scalar(0), -1);
+
     line(temp, Point(x_off*((100-10)/(double)100),y_off), Point(x_off*((100+10)/(double)100),y_off), Scalar(255,122,122),  img_res/80); //Base line
     circle(temp, Point(x_off,y_off),  img_res/90, Scalar(255,0,0), -1); //Base circle
 
     drawstate(theta, n_states, temp, Scalar(0,0,255));
     namedWindow("Map", WINDOW_NORMAL);
     imshow("Map",temp);
-    waitKey(1000);
+    waitKey(10);
     return;
 }
 void draw(vector<double> theta, int n_states, Mat costmap, vector<double> start, vector<double> end) //input in degrees, n_states=3
 {
     int x_off=costmap.rows/2, y_off=costmap.cols/2;
     Mat temp( costmap.rows, costmap.cols ,CV_8UC3,Scalar(255,255,255));   
-
     for(int i=0; i<temp.rows; i++)
     {
         for(int j=0; j<temp.cols; j++)
@@ -84,6 +75,18 @@ void draw(vector<double> theta, int n_states, Mat costmap, vector<double> start,
     waitKey(10);
     return;
 }
+template <typename T> 
+ostream& operator<<(ostream& os, const vector<T>& v) 
+{ 
+    os << "["; 
+    for (int i = 0; i < v.size(); ++i) { 
+        os << v[i]; 
+        if (i != v.size() - 1) 
+            os << ", "; 
+    } 
+    os << "]\n"; 
+    return os; 
+} 
 
 class astar
 {
@@ -117,6 +120,7 @@ public:
         bool open=false;
         bool closed=false;
         bool obs=false;
+        bool obs_check=false;
 
         int n_states;
         double g,h,f;
@@ -162,7 +166,7 @@ public:
         if(i<A.rows && j< A.cols &&i>=0&&j>=0) return 1;
         return 0;
     }
-    float f_fac=2000;
+    float f_fac=1000;
     double ch(info i1, info i2)
     {
         double temp=0;
@@ -200,7 +204,7 @@ public:
             y[i]=y[i-1]+l[i]*sin(theta[i]*CV_PI/180.0);
         }
         Mat temp(img_res, img_res, CV_8UC1,Scalar(255));   
-        for(double l=0; l<=1; l+=0.02)
+        for(double l=0; l<=1; l+=0.01)
         {
             double l_x[n_states], l_y[n_states];
             
@@ -260,6 +264,8 @@ public:
                 arr[i][j].x[1]=min_lim[1]+j*reso[1];
                 // double state[]={arr[i][j].x[0], arr[i][j].x[1]};
                 arr[i][j].obs=obs_check(arr[i][j].x, n_states, costmap);
+                arr[i][j].obs_check=true;
+
                 circle(config_space, Point(i,j), 1, Scalar(arr[i][j].obs*105,arr[i][j].obs*5,arr[i][j].obs*5), -1);
                 arr[i][j].open=false;
             }
@@ -313,13 +319,13 @@ public:
             if(arr[get_index_from_value(q.x[0],0)][get_index_from_value(q.x[1],1)].closed == true ) continue;
             // circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1, Scalar(255,100,100), -1);
             
-            if(count1>1000)
+            if(count1>800 || count > 15000)
             {
                 cout<<"Iteration count: " <<count << " States: "<<q.x[0]<<" "<<q.x[1]<<" Cost: "<<q.g<<"+"<<q.h<<" ="<<q.f<<endl;
                 // draw(q.x, 2, costmap, theta_start, theta_end);
                 // circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1,Scalar(0,0,255), -1);
-                // imshow("Configuration Space", config_space);
-                // waitKey(1);
+                imshow("Configuration Space", config_space);
+                waitKey(1);
                 
                 // circle(config_space, Point(get_index_from_value(q.x[0], 0),get_index_from_value(q.x[1], 1) ),1,Scalar(255,0,255), -1);
                 // imshow("Configuration Space", config_space);
@@ -335,12 +341,19 @@ public:
                     info temp(n_states);
                     temp.x[0]=add_ang(q.x[0],i*reso[0]);
                     temp.x[1]=add_ang(q.x[1],j*reso[1]);
-
+                            
                     // double state={temp.x[0], temp.x[1]};
 
                     if(isvalid(temp)==1 && (i!=0 || j!=0) && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].obs==false)  //valid neighbour + not the central +not an obstacle nearby check- check
                     {
                         if(i==0 && j==0) continue;
+                        int index[n_states]={get_index_from_value(temp.x[0],0),get_index_from_value(temp.x[1],1)};
+                        if(arr[index[0]][index[1]].obs_check==false)
+                        {
+                            arr[index[0]][index[1]].obs=obs_check(arr[index[0]][index[1]].x, n_states, costmap);
+                            arr[index[0]][index[1]].obs_check=true;
+                        }
+                        if(arr[index[0]][index[1]].obs==true) continue;
                         temp.open=true;          //Set the pi,pj,h,g,f values to the variable temp
                         temp.p[0]=get_index_from_value(q.x[0],0);
                         temp.p[1]=get_index_from_value(q.x[1],1);
@@ -358,7 +371,7 @@ public:
 
                         if( arr[ get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].open==true && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].g < temp.g) continue; //If node is present in open list with lower f skip this node
                         if( arr[ get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].closed==true && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].g < temp.g) continue; //If node is present in closed list with lower f skip this node
-                        float fac1=2/f_fac, fac2=3/f_fac, fac3=4/f_fac;
+                        float fac1=0.8/f_fac, fac2=1/f_fac, fac3=1.1/f_fac;
                         // int f1=fac*temp.h, f2=fac*temp.h*temp.h;
                         circle(config_space, Point(get_index_from_value(temp.x[0], 0),get_index_from_value(temp.x[1], 1) ),1, Scalar(temp.h*fac1,temp.h*fac2,temp.h*fac3), -1, 4);
                         //Otherwise add node to open list
@@ -380,11 +393,16 @@ public:
                     vector<double> temp_arr;
                     temp_arr.push_back(temp.x[0]);
                     temp_arr.push_back(temp.x[1]);
+                    config_space.at<Vec3b>(get_index_from_value(temp.x[1], 1),get_index_from_value(temp.x[0], 0))[0]=0;
+                    config_space.at<Vec3b>(get_index_from_value(temp.x[1], 1),get_index_from_value(temp.x[0], 0))[1]=255;
+                    config_space.at<Vec3b>(get_index_from_value(temp.x[1], 1),get_index_from_value(temp.x[0], 0))[2]=0;
 
+                    // circle(config_space, Point(get_index_from_value(temp.x[0], 0),get_index_from_value(temp.x[1], 1) ),1, Scalar(0,200,200), -1, 4);
                     path.push_back(temp_arr);
                     temp=arr[temp.p[0]][temp.p[1]];
                 }
             }
+            imshow("Configuration Space", config_space);
             return;
         }
         else 
@@ -399,25 +417,65 @@ public:
         if(path.size()!=0)
         {
             cout<<path.size()<<endl;
-            vector<double> start=path[0];
-            vector<double> end=path[path.size()-1];
+            vector<double> end=path[0];
+            vector<double> start=path[path.size()-1];
             for(int i=0; i<path.size(); i++)
             {
-                cout<<"traversing path"<<endl;
-                cout<<path[path.size()-1-i][0]<<" "<<path[path.size()-1-i][1]<<endl;
-                draw(path[path.size()-1-i], 2, costmap, start, end);
-                // waitKey(0);
+                vector<double> current=path[path.size()-1-i];
+                if(i==path.size()-1) 
+                {
+                    draw(current, 2, costmap, start, end);
+                    return;
+                }
+                vector<double> next=path[path.size()-2-i];
+                cout<<"------------current: "<<current<<endl;
+                cout<<"------------Next: "<<next<<endl;
+                for(int i=0; i<n_states; i++)
+                {
+                    if(next[i]-current[i]>180) current[i]+=360;
+                    if(current[i]-next[i]>180) next[i]+=360;
+
+                }
+                for(float j=0; j<1; j+=0.2)
+                {
+                    vector<double> inter;
+                    for(int k=0; k<n_states; k++) 
+                    {
+                        inter.push_back(  (1-j)*current[k]+j*next[k] ) ;
+                    }
+                    cout<<"Drawing: "<<inter<<endl;
+                    draw(inter, 2, costmap, start, end);
+                    waitKey(30);
+                }
+                waitKey(30);
            }
-       }
+        }
     }
+    // void draw_path()
+    // {
+    //     waitKey(0);
+    //     if(path.size()!=0)
+    //     {
+    //         cout<<path.size()<<endl;
+    //         vector<double> start=path[0];
+    //         vector<double> end=path[path.size()-1];
+    //         for(int i=0; i<path.size(); i++)
+    //         {
+    //             cout<<"traversing path"<<endl;
+    //             cout<<path[path.size()-1-i][0]<<" "<<path[path.size()-1-i][1]<<endl;
+    //             draw(path[path.size()-1-i], 2, costmap, start, end);
+    //             // waitKey(0);
+    //        }
+    //    }
+    // }
 };
 
 int main(int argc,char ** argv)
 {  
     Mat costmap(img_res, img_res, CV_8UC1,Scalar(255));   
-    circle(costmap, Point(img_res*(50+10)/100,img_res*(50+10)/100), img_res/70, Scalar(0), -1);
-    circle(costmap, Point(img_res*(50-25)/100,img_res*(50-15)/100), img_res/70, Scalar(0), -1);
-    circle(costmap, Point(img_res*(50+32)/100,img_res*(50-14)/100), img_res/70, Scalar(0), -1);
+    circle(costmap, Point(img_res*(50+10)/100,img_res*(50+10)/100), img_res/32, Scalar(0), -1);
+    circle(costmap, Point(img_res*(50-25)/100,img_res*(50-15)/100), img_res/32, Scalar(0), -1);
+    circle(costmap, Point(img_res*(50+32)/100,img_res*(50-14)/100), img_res/32, Scalar(0), -1);
 
     // circle(costmap, Point(500+220,500-30), 10, Scalar(0), -1);
 
