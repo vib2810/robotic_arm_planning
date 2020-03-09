@@ -33,8 +33,10 @@ public:
 	{ 
 		bool open=false;
         bool closed=false;
-        bool obs=false;
-        bool obs_check=false;
+        bool end_connected=false;
+        bool is_end=false;
+
+        // bool obs_check=false;
 
         int n_states;
         double g,h,f;
@@ -59,7 +61,7 @@ public:
 
 	info *head;
 	double dq=50;
-	double cost_h(info i1, info i2)
+	static double cost_h(info i1, info i2)
     {
         double temp=0;
         for(int i=0; i<i1.n_states; i++)
@@ -155,8 +157,11 @@ public:
     int n_states; //to represent no of variables in each state
     vector<vector<double>> path;
     vector<double>theta_start, theta_end;
+    tree::info *end;
     Mat costmap;
     double dq=10;
+    bool path_available=false;
+
  	rrt(int n_states)
  	{
  		srand (time(0));
@@ -228,12 +233,14 @@ public:
     	this->theta_start=theta_start;
     	this->theta_end=theta_end;
 
-    	tree::info start, end;
+    	tree::info start;
     	start.level=0;
+    	this->end = new tree::info;
+    	// this->endis_end=true;
     	for(int i=0; i<n_states; i++) 
 		{
 			start.x[i]=(theta_start[i]);
-			end.x[i]=(theta_end[i]);
+			end->x[i]=(theta_end[i]);
 		}
     	this->tree_data= tree(&start);
     	
@@ -241,32 +248,151 @@ public:
     	for(int i=0; i<10000; i++) 
     	{
     		expand();
-    		if(i%10 ==0 )
+    		// tree_data.print();
+			// waitKey(0);
+
+    		if(i%100 ==0 )
 			{	
-				//wrong logic, need to iterate through the whole tree and check connectivity;
 				cout<<"Iterations: "<<i<<endl;
-				tree::info *nearest_to_end=check_path(&end);
-				if(nearest_to_end==NULL) cout<<"No path"<<endl;
+				if(this->path_available==false) cout<<"No path"<<endl;
 				else 
 				{
 					cout<<"Path exists at i="<<i<<endl;
-					waitKey(0);
 				}
 				visualize();
+				waitKey(0);
 			}
     	}
     }
-    tree::info *check_path(tree::info *end)
-    {
-		tree::info *nearest_to_end=tree_data.get_nearest(end);
-		if(nearest_to_end==NULL) 
-		{
-			cout<<"case null"<<endl;
-			return NULL;
-		}
- 		if(check_valid(nearest_to_end, end)==true) return nearest_to_end;
- 		return NULL;
-    }
+    // void find_path_astar()
+    // {
+    //     cout<< "-------------------------------finding path in tree----------------------------"<<endl;
+    //     priority_queue<tree::info*> open; //open list
+    //     open.push(tree_data->head); //Initialize open list by adding starting node 
+    //     tree_data->head->open=true;
+        
+    //     int flag=0; //turns 1 if astar reaches destination;
+    //     int count=0;
+    //     waitKey(0);
+
+    //     while(open.empty()!=1 && flag!=1 && count<1000000)   
+    //     {
+    //         ++count;
+    //         info q=open.top();
+    //         open.pop();
+            
+    //         // arr[get_index_from_value(q.x[0],0)][get_index_from_value(q.x[1],1)].open = false; //remove q from open list
+    //     	q->open=false;
+    //         // if(arr[get_index_from_value(q.x[0],0)][get_index_from_value(q.x[1],1)].closed == true ) continue;
+    //         if(q->closed == true ) continue;
+
+    //         if(count%100==0) cout<<"Iteration count: " <<count << " States: "<<q.x[0]<<" "<<q.x[1]<<" Cost: "<<q.g<<"+"<<q.h<<" ="<<q.f<<endl;
+          
+    //       	for(int i=0; i<q->child.size(); q++)
+    //       	{
+    //       		tree::info *temp=new tree::info;
+    //       		temp->open=true;          //Set the pi,pj,h,g,f values to the variable temp
+    //             for(int j=0; j<n_states; j++)
+    //             {
+    //             	temp->x[j]=q->child.x[j];
+    //             	temp->p[j]=q->x[j];
+    //             }
+    //             temp->g= q.g+tree::cost_h(*q->child[i], *q);
+    //             temp->h= tree::cost_h(*q->child[i],*this->end);
+    //             temp->f= temp->g + temp->h ;
+               
+    //             if(q->child[i].is_end==true) //check if its destination
+    //             {
+    //             	for(int j=0; j<n_states; j++) q->child[i].p[j]=temp->p[j];
+    //                 flag=1; //reached destination
+    //                 break;
+    //             }
+    //             // if()	
+    //         //     if( arr[ get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].open==true && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].g < temp.g) continue; //If node is present in open list with lower f skip this node
+    //         //     if( arr[ get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].closed==true && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].g < temp.g) continue; //If node is present in closed list with lower f skip this node
+    //         //     float fac1=0.8/f_fac, fac2=1/f_fac, fac3=1.1/f_fac;
+    //       		// tree::info *temp=new tree::info;
+
+    //       	}
+    //     }
+    //         // for(int i=-1;i<2;i++)//Traverse through  //q is parent node, temp is the successor
+    //         // {
+    //         //     for(int j=-1;j<2;j++)
+    //         //     {
+    //         //         info temp(n_states);
+    //         //         temp.x[0]=add_ang(q.x[0],i*reso[0]);
+    //         //         temp.x[1]=add_ang(q.x[1],j*reso[1]);
+                            
+    //         //         // double state={temp.x[0], temp.x[1]};
+
+    //         //         if(isvalid(temp)==1 && (i!=0 || j!=0) && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].obs==false)  //valid neighbour + not the central +not an obstacle nearby check- check
+    //         //         {
+    //         //             if(i==0 && j==0) continue;
+    //         //             int index[n_states]={get_index_from_value(temp.x[0],0),get_index_from_value(temp.x[1],1)};
+    //         //             if(arr[index[0]][index[1]].obs_check==false)
+    //         //             {
+    //         //                 arr[index[0]][index[1]].obs=obs_check(arr[index[0]][index[1]].x, n_states, costmap);
+    //         //                 arr[index[0]][index[1]].obs_check=true;
+    //         //             }
+    //         //             if(arr[index[0]][index[1]].obs==true) continue;
+    //         //             temp.open=true;          //Set the pi,pj,h,g,f values to the variable temp
+    //         //             temp.p[0]=get_index_from_value(q.x[0],0);
+    //         //             temp.p[1]=get_index_from_value(q.x[1],1);
+    //         //             temp.g= q.g+cost2[i+1][j+1];
+    //         //             temp.h= ch(temp,end);
+    //         //             temp.f= temp.g + temp.h ;
+                       
+    //         //             if( temp.x[0]==end.x[0] && temp.x[1]==end.x[1]) //check if its destination
+    //         //             {
+    //         //                 arr[get_index_from_value(temp.x[0],0)][ get_index_from_value(temp.x[1],1)].p[0] = temp.p[0];  //Save parent details for destination
+    //         //                 arr[get_index_from_value(temp.x[0],0)][ get_index_from_value(temp.x[1],1)].p[1] = temp.p[1];
+    //         //                 flag=1; //reached destination
+    //         //                 break;
+    //         //             }
+
+    //         //             if( arr[ get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].open==true && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].g < temp.g) continue; //If node is present in open list with lower f skip this node
+    //         //             if( arr[ get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].closed==true && arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)].g < temp.g) continue; //If node is present in closed list with lower f skip this node
+    //         //             float fac1=0.8/f_fac, fac2=1/f_fac, fac3=1.1/f_fac;
+    //         //             // int f1=fac*temp.h, f2=fac*temp.h*temp.h;
+    //         //             circle(config_space, Point(get_index_from_value(temp.x[0], 0),get_index_from_value(temp.x[1], 1) ),1, Scalar(temp.h*fac1,temp.h*fac2,temp.h*fac3), -1, 4);
+    //         //             //Otherwise add node to open list
+    //         //             open.push(temp); //Push to priority list
+    //         //             arr[get_index_from_value(temp.x[0],0)][get_index_from_value(temp.x[1],1)] = temp;
+    //         //         }
+    //         //     }
+    //         // }
+    //         // arr[get_index_from_value(q.x[0],0)][get_index_from_value(q.x[1],1)].closed=true;
+    //     }
+    //     cout<<"Done Plan"<<endl;
+    //     if(flag==1)
+    //     {
+    //         cout<<"Path Found"<<endl;
+    //         info temp=arr[get_index_from_value(end.x[0],0)][get_index_from_value(end.x[1],1)];
+    //         while(temp.x[0]!=start.x[0]||temp.x[1]!=start.x[1])
+    //         {
+    //             {
+    //                 vector<double> temp_arr;
+    //                 temp_arr.push_back(temp.x[0]);
+    //                 temp_arr.push_back(temp.x[1]);
+    //                 config_space.at<Vec3b>(get_index_from_value(temp.x[1], 1),get_index_from_value(temp.x[0], 0))[0]=0;
+    //                 config_space.at<Vec3b>(get_index_from_value(temp.x[1], 1),get_index_from_value(temp.x[0], 0))[1]=255;
+    //                 config_space.at<Vec3b>(get_index_from_value(temp.x[1], 1),get_index_from_value(temp.x[0], 0))[2]=0;
+
+    //                 // circle(config_space, Point(get_index_from_value(temp.x[0], 0),get_index_from_value(temp.x[1], 1) ),1, Scalar(0,200,200), -1, 4);
+    //                 path.push_back(temp_arr);
+    //                 temp=arr[temp.p[0]][temp.p[1]];
+    //             }
+    //         }
+    //         imshow("Configuration Space", config_space);
+    //         return;
+    //     }
+    //     else 
+    //     {
+    //         cout<<"No path"<<endl;
+    //         return;
+    //     }
+
+    // }
  	bool expand()
  	{
  		tree::info *sampled= new tree::info;
@@ -281,10 +407,24 @@ public:
 		for(int i=0; i<n_states; i++) dist+=pow(sampled->x[i]-nearest->x[i],2);
 		dist=sqrt(dist);
  		if(dist>this->dq) for(int i=0; i<n_states; i++) sampled->x[i]= nearest->x[i]+((sampled->x[i]-nearest->x[i])*this->dq)/dist;
- 		
+ 		sampled->h=tree::cost_h(*sampled, *this->end);
  		if(check_valid(nearest, sampled)==true)
  		{
+ 			// bool flag=false;
+ 			if(check_valid(sampled, this->end)==true)
+ 			{
+ 				this->path_available=true;
+ 				sampled->end_connected=true;
+				// tree_data.add_child(this->end, sampled);
+ 				// flag = true;
+ 			}
+ 			else sampled->end_connected=false;
+
  			tree_data.add_child(sampled, nearest);
+ 		// 	if(flag==true) 
+			// {
+			// 	cout<<"adding end"<<endl;
+			// }
  			return true;
  		}
  		return false;
@@ -322,7 +462,7 @@ int main()
 { 
 	Mat costmap(img_res, img_res, CV_8UC1,Scalar(255));   
     circle(costmap, Point(img_res*(50+10)/100,img_res*(50+10)/100), img_res/30, Scalar(0), -1);
-    // circle(costmap, Point(img_res*(50-25)/100,img_res*(50-15)/100), img_res/30, Scalar(0), -1);
+    circle(costmap, Point(img_res*(50-25)/100,img_res*(50-15)/100), img_res/30, Scalar(0), -1);
     // circle(costmap, Point(img_res*(50+32)/100,img_res*(50-14)/100), img_res/70, Scalar(0), -1);
 
     // circle(costmap, Point(500+220,500-30), 10, Scalar(0), -1);

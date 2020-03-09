@@ -3,6 +3,9 @@
 #include <bits/stdc++.h>
 #include <limits.h>
 #include <math.h>
+#include <thread> 
+#include <atomic> 
+
 using namespace cv;
 using namespace std;
 
@@ -11,7 +14,7 @@ double l[3]={ (double)250*img_res/(double)1000, (double)180*img_res/(double)1000
 double max_lim[3]={360, 360, 360};
 double min_lim[3]={0, 0, 0};
 // double reso[3]={5,5,5}; //resolution for each state
-double reso[3]={10,18,36}; //resolution for each state
+double reso[3]={5,9,18}; //resolution for each state
 // double reso[3]={30,30,30}; //resolution for each state
 
 void drawstate(vector<double>theta, int n_states, Mat &image, Scalar color)
@@ -249,6 +252,65 @@ public:
         // waitKey(0);
         return false;
     }
+    bool obs_checkp(vector<double> theta, int n_states, Mat costmap)
+    {
+        //Parallel Implementation of the obs_check function
+        int x[n_states], y[n_states];
+        x[0]=l[0]*cos(theta[0]*CV_PI/180.0), y[0]=l[0]*sin(theta[0]*CV_PI/180.0);
+        for(int i=1; i<n_states; i++)
+        {
+            x[i]=x[i-1]+l[i]*cos(theta[i]*CV_PI/180.0);
+            y[i]=y[i-1]+l[i]*sin(theta[i]*CV_PI/180.0);
+        }                        
+        std::atomic<bool> stop_thread_1(false);
+        bool ans_ret=false;
+        //lambda
+        auto f = [&](int n_state)// future<bool>& fut) 
+        { 
+            for(double l=0; l<=1; l+=0.005)
+            {
+                if (stop_thread_1)
+                {
+                    return;  
+                } 
+                double l_x, l_y;
+                //construct point to check fpr link no n_state;
+                if(n_state==0)
+                {
+                    l_x= l*0+(1-l)*x[n_state];
+                    l_y= l*0+(1-l)*y[n_state];
+                }
+                else
+                {
+                    l_x= l*x[n_state-1]+(1-l)*x[n_state];
+                    l_y= l*y[n_state-1]+(1-l)*y[n_state];
+                }
+
+                if(isvalid(costmap, costmap.rows/2 + l_y, costmap.cols/2 +l_x)==1)
+                {
+                        if(costmap.at<uchar>(costmap.rows/2 + (int)l_y,costmap.cols/2 +(int)l_x)==0) //Obstacle
+                        {
+                            // cout<<"Obstacle"<<endl;
+                            ans_ret=true;
+                            stop_thread_1 = true;
+                            // cout<<"the thread no is: "<<n_state<<endl;
+                            return;
+                        }
+                }
+            }
+        }; 
+
+        thread th[n_states];
+        for(int i=0; i<n_states; i++)
+        {
+            th[i]= thread(f, i);
+        }
+        for(int i=0; i<n_states; i++)
+        {
+            th[i].join();
+        }
+        return ans_ret;
+    }
     int clamp(int input, int reso)
     {
         if(input%reso!=0)
@@ -373,7 +435,7 @@ public:
                             int index[n_states]={get_index_from_value(temp.x[0],0),get_index_from_value(temp.x[1],1),get_index_from_value(temp.x[2],2)};
                             if(arr[index[0]][index[1]][index[2]].obs_check==false)
                             {
-                                arr[index[0]][index[1]][index[2]].obs=obs_check(arr[index[0]][index[1]][index[2]].x, n_states, costmap);
+                                arr[index[0]][index[1]][index[2]].obs=obs_checkp(arr[index[0]][index[1]][index[2]].x, n_states, costmap);
                                 arr[index[0]][index[1]][index[2]].obs_check=true;
                             }
                             if(arr[index[0]][index[1]][index[2]].obs==true) continue;
